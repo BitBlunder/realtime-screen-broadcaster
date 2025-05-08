@@ -1,5 +1,6 @@
 // grab elements
 const canvas       = document.getElementById('video-canvas');
+const debug_frame_element          = document.getElementById('debug-frame');
 const placeholder  = document.getElementById('placeholder');
 const stopBtn      = document.getElementById('stop-button');
 const statusEl     = document.getElementById('status');
@@ -78,6 +79,9 @@ function openWS() {
 	  canvas.height = bitmap.height;
 	  ctx.drawImage(bitmap, 0, 0);
 	  bitmap.close();
+
+	  const url = URL.createObjectURL(blob);
+	  debug_frame_element.src = url;
 
 	  resEl.textContent = `${canvas.width} × ${canvas.height}`;
 	  fpsTmp++;
