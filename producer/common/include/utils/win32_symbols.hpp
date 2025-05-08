@@ -1,0 +1,58 @@
+#ifndef WIN32_SYMBOLS_HPP
+#define WIN32_SYMBOLS_HPP
+
+#include <windows.h>
+
+
+#define WIN32_SYM_TYPE(name, ret, ...) using name##_t = ret (WINAPI*)(__VA_ARGS__);
+#define WIN32_SYM_DECL(name) inline name##_t fptr_##name = nullptr;
+
+/*          KERNEL32 Functions          */
+WIN32_SYM_TYPE(LoadLibraryA, HMODULE, LPCSTR)
+WIN32_SYM_DECL(LoadLibraryA)
+
+// Process Operations
+WIN32_SYM_TYPE(CreatePipe, BOOL, PHANDLE, PHANDLE, LPSECURITY_ATTRIBUTES, DWORD)
+WIN32_SYM_DECL(CreatePipe)
+
+WIN32_SYM_TYPE(CreateProcessA, BOOL, LPCSTR, LPCSTR, LPSECURITY_ATTRIBUTES, LPSECURITY_ATTRIBUTES, BOOL, DWORD, LPVOID, LPCSTR, LPSTARTUPINFOA, LPPROCESS_INFORMATION)
+WIN32_SYM_DECL(CreateProcessA)
+
+// File Operations
+WIN32_SYM_TYPE(ReadFile, BOOL, HANDLE, LPVOID, DWORD, LPDWORD, LPOVERLAPPED)
+WIN32_SYM_DECL(ReadFile)
+
+WIN32_SYM_TYPE(WriteFile, BOOL, HANDLE, LPCVOID, DWORD, LPDWORD, LPOVERLAPPED)
+WIN32_SYM_DECL(WriteFile)
+
+WIN32_SYM_TYPE(CreateFileA, HANDLE, LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE)
+WIN32_SYM_DECL(CreateFileA)
+
+// Filesystem Operations
+WIN32_SYM_TYPE(CreateDirectoryA, BOOL, LPCSTR, LPSECURITY_ATTRIBUTES)
+WIN32_SYM_DECL(CreateDirectoryA)
+
+WIN32_SYM_TYPE(SetCurrentDirectoryA, BOOL, LPCTSTR)
+WIN32_SYM_DECL(SetCurrentDirectoryA)
+
+// System and File Retrievers
+WIN32_SYM_TYPE(GetFileAttributesA, DWORD, LPCSTR)
+WIN32_SYM_DECL(GetFileAttributesA)
+
+WIN32_SYM_TYPE(GetModuleFileNameA, DWORD, HMODULE, LPSTR, DWORD)
+WIN32_SYM_DECL(GetModuleFileNameA)
+
+WIN32_SYM_TYPE(GetEnvironmentVariableA, DWORD, LPCSTR, LPSTR, DWORD)
+WIN32_SYM_DECL(GetEnvironmentVariableA)
+
+// Clean Up Operations
+WIN32_SYM_TYPE(CloseHandle, BOOL, HANDLE)
+WIN32_SYM_DECL(CloseHandle)
+
+
+/*          SHELL32 Functions          */
+// System Operations
+WIN32_SYM_TYPE(ShellExecuteA, HWND, LPCSTR, LPCSTR, LPCSTR, LPCSTR, INT)
+WIN32_SYM_DECL(ShellExecuteA)
+
+#endif
