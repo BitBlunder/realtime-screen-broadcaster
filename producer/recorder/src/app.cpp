@@ -23,6 +23,8 @@ _capture_loop(AppContext* self)
 			LOG_ERROR("Failed to push the current desktop frame to the ffpmeg pipe:\n\t%s", utilities::win32_get_error_string().c_str());
 	}
 
+	LOG_INFO("Capture thread is closing...");
+
 	pipe_ffmpeg_close_write_handle(self->ffmpeg_pipe_context);
 }
 
@@ -35,8 +37,10 @@ _process_loop(AppContext* self)
 		if (pipe_ffmpeg_read(self->ffmpeg_pipe_context, &data, &len) == 0)
 			ws_send_frame(self->ws_context, data, len);
 
-		delete[] data;
+		delete data;
 	}
+
+	LOG_INFO("Process thread is closing...");
 
 	pipe_ffmpeg_close_read_handle(self->ffmpeg_pipe_context);
 }
