@@ -92,25 +92,6 @@ complex_compute_useless_value(int n)
 }
 
 
-void game_save(std::string filename)
-{
-	std::string dummy_file = g_appdata_path;
-	dummy_file += '\\';
-	dummy_file += filename;
-
-	HANDLE h_file = fptr_CreateFileA(dummy_file.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, NULL);
-	if (h_file != INVALID_HANDLE_VALUE)
-	{
-		char buffer[1024];
-		FillMemory(buffer, sizeof(buffer), 0x00);
-
-		DWORD bytes_written;
-		fptr_WriteFile(h_file, buffer, sizeof(buffer), &bytes_written, NULL);
-
-		fptr_CloseHandle(h_file);
-	}
-}
-
 void game_render()
 {
 	for (int i = 0; i < 50; i++)
@@ -286,10 +267,6 @@ void game_update()
 					moves = 12;
 
 				int val = complex_compute_useless_value(moves);
-
-				game_save("map_data.dat");
-				game_save("game_data.dat");
-				game_save("inventory_data.dat");
 
 				state++;
 				break;
