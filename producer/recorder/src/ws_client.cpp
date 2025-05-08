@@ -50,12 +50,12 @@ _flush_queue(WsClientContext* self)
 	{
 		auto& pkt        = self->ring_buffer.front();
 		size_t bytes     = pkt.size();
-		double size_mb   = static_cast<double>(bytes) / (1024.0 * 1024.0);
+		double size_kb   = static_cast<double>(bytes) / (1024.0);
 		size_t depth     = self->ring_buffer.size();
 		uint64_t this_id = debug_frame_id++;
 
 		// Log before send
-		LOG_DEBUG("Frame %llu: queue=%llu size=%.2f MB - attempting send...", this_id, depth, size_mb);
+		LOG_DEBUG("Frame %llu: queue=%llu size=%.2f kB - attempting send...", this_id, depth, size_kb);
 
 		websocketpp::lib::error_code ec;
 		self->client.send(
