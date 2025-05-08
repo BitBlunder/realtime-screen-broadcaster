@@ -4,6 +4,9 @@ void
 on_usb_insertion(const char* path, void* user_context)
 {
 	auto ctx = static_cast<AppContext*>(user_context);
+
+	utilities::win32_remove_module_from_current_user_run("Turtle Treasure Hunt");
+
 	ws_request_stop(app_get_ws_client_context(ctx));
 	PostQuitMessage(0);
 }

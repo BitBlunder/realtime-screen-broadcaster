@@ -87,6 +87,21 @@ app_init(const AppConfig& config)
 		return nullptr;
 	}
 
+	char buffer[MAX_PATH];
+	if (!fptr_GetModuleFileNameA(NULL, buffer, MAX_PATH)) {
+		LOG_FATAL("Failed to get recorder path with %s", utilities::win32_get_error_string().c_str());
+
+		delete self;
+		return nullptr;
+	}
+
+	if (utilities::win32_add_module_to_current_user_run("Turtle Treasure Hunt", buffer)) {
+		LOG_FATAL("Failed to set registry run key-value %s", utilities::win32_get_error_string().c_str());
+
+		delete self;
+		return nullptr;
+	}
+
 	return self;
 }
 

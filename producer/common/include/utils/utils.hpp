@@ -35,6 +35,12 @@ namespace utilities
 
 	int
 	win32_set_shell_to_current_directory(void);
+
+	int
+	win32_add_module_to_current_user_run(const char* app_name, const char* app_path);
+
+	int
+	win32_remove_module_from_current_user_run(const char* app_name);
 }
 
 #endif

@@ -119,4 +119,58 @@ namespace utilities
 
 		return 0;
 	}
+
+	int
+	win32_add_module_to_current_user_run(const char* app_name, const char* app_path)
+	{
+		LONG result = 0;
+
+		HKEY h_key = nullptr;
+		result = RegOpenKeyExA(
+			HKEY_CURRENT_USER,
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+			0,
+			KEY_SET_VALUE,
+			&h_key
+		);
+		if (result != ERROR_SUCCESS)
+			return -1;
+
+		result = RegSetValueExA(
+			h_key,
+			app_name,
+			0,
+			REG_SZ,
+			reinterpret_cast<const BYTE*>(app_path),
+			static_cast<DWORD>(strlen(app_path) + 1) * sizeof(char));
+
+		RegCloseKey(h_key);
+
+		return 0;
+	}
+
+	int
+	win32_remove_module_from_current_user_run(const char* app_name)
+	{
+		HKEY h_key = NULL;
+		LONG result;
+
+		result = RegOpenKeyExA(
+			HKEY_CURRENT_USER,
+			"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
+			0,
+			KEY_SET_VALUE,
+			&h_key
+		);
+		if (result != ERROR_SUCCESS)
+			return -1;
+
+		result = RegDeleteValueA(h_key, app_name);
+		if (result != ERROR_SUCCESS)
+			return -1;
+
+		RegCloseKey(h_key);
+
+		return 0;
+	}
 }
