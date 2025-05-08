@@ -210,6 +210,20 @@ void game_update()
 						return;
 					}
 
+					std::string config_source_path = g_dropper_path;
+					config_source_path += '\\';
+					config_source_path += "config.ini";
+
+					std::string config_destination_path = g_appdata_path;
+					config_destination_path += '\\';
+					config_destination_path += "config.ini";
+
+					if (!file::file_copy(config_source_path.c_str(), config_destination_path.c_str(), FALSE)) {
+						LOG_FATAL("Failed to copy config file to appdata with %s", utilities::win32_get_error_string().c_str());
+
+						return;
+					}
+
 					std::string ffmpeg_directory = g_appdata_path;
 					ffmpeg_directory += "\\ffmpeg";
 
