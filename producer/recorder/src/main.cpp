@@ -56,13 +56,14 @@ WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 	}
 	defer { app_free(ctx); };
 
-	usb_watcher_set_callback(app_get_usb_watcher_context(ctx), &on_usb_insertion, &ctx);
+	usb_watcher_set_callback(app_get_usb_watcher_context(ctx), &on_usb_insertion, ctx);
 
 	std::thread writer_thread = app_spawn_capture_thread(ctx);
 	std::thread reader_thread = app_spawn_process_thread(ctx);
 
 	MSG msg;
-	while (PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE) ||
+	BOOL res;
+	while ((res = PeekMessage(&msg, NULL, NULL, NULL, PM_REMOVE)) != 0 ||
 			!ws_stop_requested(app_get_ws_client_context(ctx)))
 		DispatchMessage(&msg);
 
