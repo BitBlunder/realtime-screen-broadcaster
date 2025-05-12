@@ -4,17 +4,12 @@ import logging
 import gevent, flask, flask_sock
 
 from typing import Optional, Dict
+import gevent.monkey
 from gevent.queue import Queue
 from simple_websocket import Server
 
 # --- Apply gevent monkey-patching for cooperative I/O ---
 gevent.monkey.patch_all()
-
-logging.basicConfig(
-	format="[%(asctime)s] %(levelname)s in %(module)s: %(message)s",
-	level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
 
 class StreamManager:
 	"""
@@ -39,7 +34,7 @@ class StreamManager:
 
 		self.viewers[id] = ws
 
-		logger.info(f"Viewer connected: SID={id} (total={len(self.viewers)})")
+		print(f"Viewer connected: SID={id} (total={len(self.viewers)})")
 
 	def register_producer(self, id: str, ws: Server) -> bool:
 		"""Attempt to register a new producer; return True if successful."""
@@ -50,7 +45,7 @@ class StreamManager:
 		self.producer_id = id
 		self.producer_ws = ws
 
-		logger.info(f"Registered producer: SID={id}")
+		print(f"Registered producer: SID={id}")
 
 		return True
 
@@ -59,12 +54,12 @@ class StreamManager:
 
 		self.viewers.pop(id, None)
 
-		logger.info(f"Viewer disconnected: SID={id} (total={len(self.viewers)})")
+		print(f"Viewer disconnected: SID={id} (total={len(self.viewers)})")
 
 	def unregister_producer(self) -> None:
 		"""Clean up producer state and notify viewers of stream end."""
 
-		logger.info(f"Unregistering producer: SID={self.producer_id}")
+		print(f"Unregistering producer: SID={self.producer_id}")
 
 		self.producer_id = None
 		self.producer_ws = None
@@ -75,7 +70,7 @@ class StreamManager:
 			except Exception:
 				pass
 
-		logger.info("Notified viewers of stream end.")
+		print("Notified viewers of stream end.")
 
 
 	def relay_stop(self) -> None:
@@ -127,7 +122,7 @@ class StreamingApp:
 			id = self.manager.gen_id()
 
 			first = ws.receive()
-			logger.info(f"First message from SID={id}: {first}")
+			print(f"First message from SID={id}: {first}")
 
 			# Producer flow
 			if isinstance(first, str) and first == 'register_producer':
