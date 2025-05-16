@@ -29,13 +29,13 @@ _create_cmd(const FFMPEGPipeConfig& pipe_config)
 		return nullptr;
 
 	sprintf(cmd,
-		"%s -f rawvideo -pix_fmt bgra -s %dx%d -framerate %d -i pipe:0 " // Input Section
-		"-c:v mjpeg -q:v %d -pix_fmt yuvj420p -f mjpeg pipe:1",          // Output Section
-
+		"%s "
+		"-f rawvideo -pix_fmt bgra -s 1920x1080 -framerate %d -i pipe:0 "   /* raw‐pipe input */
+		"-vf \"scale=%d:%d\" "                                              /* scale filter */
+		"-c:v mjpeg -q:v %d -pix_fmt yuvj420p -f mjpeg pipe:1",             /* MJPEG output */
 		pipe_config.exe_path,
-		pipe_config.width,
-		pipe_config.height,
 		pipe_config.frames_per_second,
+		pipe_config.width, pipe_config.height,
 		pipe_config.quality
 	);
 
