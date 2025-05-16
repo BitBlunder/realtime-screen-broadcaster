@@ -1,5 +1,5 @@
 import secrets
-import logging
+import socket
 
 import gevent, flask, flask_sock
 
@@ -119,6 +119,10 @@ class StreamingApp:
 
 		@self.sock.route('/ws')
 		def ws_handler(ws: Server):
+			# Disable Nagle on this connection
+			raw_sock = ws.sock if hasattr(ws, 'sock') else None
+			raw_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
 			id = self.manager.gen_id()
 
 			first = ws.receive()
@@ -156,7 +160,7 @@ class StreamingApp:
 				finally:
 					self.manager.unregister_viewer(id)
 
-	def run(self, host: str = '0.0.0.0', port: int = 80, debug: bool = True) -> None:
+	def run(self, host: str = '0.0.0.0', port: int = 5000, debug: bool = True) -> None:
 		self.app.run(host=host, port=port, debug=debug)
 
 
