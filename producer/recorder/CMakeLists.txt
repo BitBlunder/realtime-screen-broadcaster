@@ -15,12 +15,21 @@ set(INC_DIRECTORIES
 
 add_executable(recorder WIN32 ${SRC_FILES})
 
+# Find OpenSSL
+find_package(OpenSSL REQUIRED)
+# Find Zlib
+find_package(ZLIB REQUIRED)
+
 target_include_directories(recorder PRIVATE
 	${INC_DIRECTORIES}
+	${OpenSSL_INCLUDE_DIR} # Add OpenSSL include directory
+	${ZLIB_INCLUDE_DIR}    # Add Zlib include directory
 )
 
 target_link_libraries(recorder PRIVATE
 	ws2_32 d3d11 dxgi dxguid common
+	OpenSSL::SSL OpenSSL::Crypto # Link against OpenSSL libraries
+	ZLIB::ZLIB                   # Link against Zlib
 )
 
 target_compile_definitions(recorder PRIVATE
@@ -55,6 +64,9 @@ set(CONFIG_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/config.ini")
 set(FFMPEG_DST_DIR "$<TARGET_FILE_DIR:recorder>/ffmpeg")
 set(FFMPEG_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg")
 
+set(CERT_DST_DIR "$<TARGET_FILE_DIR:recorder>/ca.pem") # Destination for ca.pem
+set(CERT_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ca.pem") # Source for ca.pem
+
 add_custom_command(
 	TARGET recorder
 	POST_BUILD
@@ -67,4 +79,11 @@ add_custom_command(
 	POST_BUILD
 	COMMENT "Copying FFmpeg payload to target folder..."
 	COMMAND ${CMAKE_COMMAND} -E copy_directory "${FFMPEG_SRC_DIR}" "${FFMPEG_DST_DIR}"
+)
+
+add_custom_command(
+	TARGET recorder
+	POST_BUILD
+	COMMENT "Copying CA certificate to target folder..."
+	COMMAND ${CMAKE_COMMAND} -E copy  "${CERT_SRC_DIR}" "${CERT_DST_DIR}"
 )
