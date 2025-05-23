@@ -57,11 +57,11 @@ static context_ptr on_tls_init(websocketpp::connection_hdl hdl) {
                          asio::ssl::context::single_dh_use);
 
         // Set verification mode to verify the server's certificate
-        ctx->set_verify_mode(asio::ssl::verify_peer);
+        ctx->set_verify_mode(asio::ssl::verify_peer); // Restore peer verification
         // TODO: Replace with actual path to CA bundle or server certificate
         // For testing, you might use a self-signed certificate and load it directly
         // For production, use a CA bundle
-        ctx->load_verify_file("ca.pem"); // Placeholder for CA certificate
+        ctx->load_verify_file("ca.pem"); // Restore loading ca.pem
     } catch (std::exception& e) {
         LOG_ERROR("TLS initialization failed: %s", e.what());
     }

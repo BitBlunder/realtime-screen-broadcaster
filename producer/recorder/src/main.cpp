@@ -19,7 +19,7 @@ win32_load_configuration_file(AppConfig* config)
 	GetPrivateProfileStringA("websocket", "ip", "",
 		ip_buffer, sizeof(ip_buffer), ".\\config.ini");
 
-	if (snprintf(config->ws_client_config.url, sizeof(config->ws_client_config.url), "ws://%s:5000/ws", ip_buffer) < 0)
+	if (snprintf(config->ws_client_config.url, sizeof(config->ws_client_config.url), "wss://%s:443/ws", ip_buffer) < 0)
 		return -1;
 
 	GetPrivateProfileStringA("usb", "vid", "",

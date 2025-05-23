@@ -1,5 +1,6 @@
 import secrets
 import socket
+import ssl
 
 import gevent, flask, flask_sock
 
@@ -160,8 +161,27 @@ class StreamingApp:
 				finally:
 					self.manager.unregister_viewer(id)
 
-	def run(self, host: str = '0.0.0.0', port: int = 5000, debug: bool = True) -> None:
-		self.app.run(host=host, port=port, debug=debug)
+	def run(self, host: str = '0.0.0.0', port: int = 443, debug: bool = True) -> None:
+		# SSL context setup
+		context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+		# Assumes server.crt and server.key are in the parent directory of app.py
+		cert_file = '../server.crt' # Adjusted path
+		key_file = '../server.key'   # Adjusted path
+		try:
+			context.load_cert_chain(cert_file, key_file)
+			print(f"Successfully loaded SSL certificate from {cert_file} and key from {key_file}")
+		except FileNotFoundError:
+			print(f"Error: Could not find SSL certificate ({cert_file}) or key ({key_file}). Ensure they are in the correct location.")
+			return
+		except ssl.SSLError as e:
+			print(f"Error loading SSL certificate or key: {e}")
+			return
+
+		from gevent.pywsgi import WSGIServer
+		# Run WSS server with SSL context
+		http_server = WSGIServer((host, port), self.app, keyfile=key_file, certfile=cert_file)
+		print(f"Starting WSS server on https://{host}:{port}")
+		http_server.serve_forever()
 
 
 if __name__ == '__main__':
