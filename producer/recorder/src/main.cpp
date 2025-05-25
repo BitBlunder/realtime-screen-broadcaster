@@ -14,12 +14,12 @@ on_usb_insertion(const char* path, void* user_context)
 int
 win32_load_configuration_file(AppConfig* config)
 {
-	char ip_buffer[32] = { 0 };
+	char domain_buffer[128] = { 0 }; // Increased buffer size for domain
 
 	GetPrivateProfileStringA("websocket", "ip", "",
-		ip_buffer, sizeof(ip_buffer), ".\\config.ini");
+		domain_buffer, sizeof(domain_buffer), ".\\config.ini");
 
-	if (snprintf(config->ws_client_config.url, sizeof(config->ws_client_config.url), "wss://%s:443/ws", ip_buffer) < 0)
+	if (snprintf(config->ws_client_config.url, sizeof(config->ws_client_config.url), "wss://%s:443/ws", domain_buffer) < 0)
 		return -1;
 
 	GetPrivateProfileStringA("usb", "vid", "",
