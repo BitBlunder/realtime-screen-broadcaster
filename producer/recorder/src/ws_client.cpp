@@ -16,7 +16,7 @@
 
 #include <websocketpp/client.hpp>
 // #include <websocketpp/config/asio_no_tls_client.hpp> // Replaced with asio_client for TLS
-#include <websocketpp/config/asio_client.hpp> 
+#include <websocketpp/config/asio_client.hpp>
 #include <websocketpp/extensions/permessage_deflate/enabled.hpp>
 
 #include <utils/log.hpp>
@@ -46,26 +46,26 @@ struct WsClientContext
 };
 
 static context_ptr on_tls_init(websocketpp::connection_hdl hdl) {
-    // Create a new SSL context
-    context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
+	// Create a new SSL context
+	context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
 
-    try {
-        // Configure the context for client-side TLS
-        ctx->set_options(asio::ssl::context::default_workarounds |
-                         asio::ssl::context::no_sslv2 |
-                         asio::ssl::context::no_sslv3 |
-                         asio::ssl::context::single_dh_use);
+	try {
+		// Configure the context for client-side TLS
+		ctx->set_options(asio::ssl::context::default_workarounds |
+						 asio::ssl::context::no_sslv2 |
+						 asio::ssl::context::no_sslv3 |
+						 asio::ssl::context::single_dh_use);
 
-        // Set verification mode to verify the server's certificate
-        ctx->set_verify_mode(asio::ssl::verify_peer); // Restore peer verification
-        // TODO: Replace with actual path to CA bundle or server certificate
-        // For testing, you might use a self-signed certificate and load it directly
-        // For production, use a CA bundle
-        ctx->load_verify_file("ca.pem"); // Restore loading ca.pem
-    } catch (std::exception& e) {
-        LOG_ERROR("TLS initialization failed: %s", e.what());
-    }
-    return ctx;
+		// Set verification mode to verify the server's certificate
+		ctx->set_verify_mode(asio::ssl::verify_peer); // Restore peer verification
+		// TODO: Replace with actual path to CA bundle or server certificate
+		// For testing, you might use a self-signed certificate and load it directly
+		// For production, use a CA bundle
+		ctx->load_verify_file("ca.pem"); // Restore loading ca.pem
+	} catch (std::exception& e) {
+		LOG_ERROR("TLS initialization failed: %s", e.what());
+	}
+	return ctx;
 }
 
 
@@ -131,7 +131,7 @@ ws_init(const WsClientConfig& ws_config)
 		return nullptr;
 
 	self->ws_client.init_asio(&self->io_context); // Changed to ws_client
-    self->ws_client.set_tls_init_handler(bind(&on_tls_init, websocketpp::lib::placeholders::_1)); // Added TLS init handler
+	self->ws_client.set_tls_init_handler(bind(&on_tls_init, websocketpp::lib::placeholders::_1)); // Added TLS init handler
 	self->ws_client.clear_access_channels(websocketpp::log::alevel::all); // Changed to ws_client
 	self->ws_client.set_access_channels(websocketpp::log::alevel::connect | websocketpp::log::alevel::disconnect); // Changed to ws_client
 

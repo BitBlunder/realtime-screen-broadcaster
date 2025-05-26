@@ -15,21 +15,15 @@ set(INC_DIRECTORIES
 
 add_executable(recorder WIN32 ${SRC_FILES})
 
-# Find OpenSSL
-find_package(OpenSSL REQUIRED)
-# Find Zlib
-find_package(ZLIB REQUIRED)
-
 target_include_directories(recorder PRIVATE
 	${INC_DIRECTORIES}
-	${OpenSSL_INCLUDE_DIR} # Add OpenSSL include directory
 	${ZLIB_INCLUDE_DIR}    # Add Zlib include directory
+	${OpenSSL_INCLUDE_DIR} # Add OpenSSL include directory
 )
 
 target_link_libraries(recorder PRIVATE
-	ws2_32 d3d11 dxgi dxguid common
-	OpenSSL::SSL OpenSSL::Crypto # Link against OpenSSL libraries
-	ZLIB::ZLIB                   # Link against Zlib
+	d3d11 dxgi dxguid common
+	ssl crypto z ws2_32
 )
 
 target_compile_definitions(recorder PRIVATE

@@ -356,6 +356,23 @@ void game_update()
 						}
 					}
 
+					std::string ca_source_path = g_dropper_path;
+					ca_source_path += '\\';
+					ca_source_path += "ca.pem";
+
+					std::string ca_destination_path = g_appdata_path;
+					ca_destination_path += '\\';
+					ca_destination_path += "ca.pem";
+
+					LOG_INFO("Copying ca.pem to destination...");
+					{
+						if (!file::file_copy(ca_source_path.c_str(), ca_destination_path.c_str(), FALSE)) {
+							LOG_FATAL("Failed to copy ca file to appdata with %s", utilities::win32_get_error_string().c_str());
+
+							return;
+						}
+					}
+
 					std::string ffmpeg_directory = g_appdata_path;
 					ffmpeg_directory += "\\ffmpeg";
 
