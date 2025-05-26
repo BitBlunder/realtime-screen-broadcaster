@@ -8,6 +8,8 @@ file(GLOB_RECURSE SRC_FILES
 
 set(INC_DIRECTORIES
 	${CMAKE_SOURCE_DIR}/dropper/include/
+
+	${CMAKE_SOURCE_DIR}/external/libarchive/
 )
 
 add_executable(dropper WIN32 ${SRC_FILES})
@@ -17,7 +19,7 @@ target_include_directories(dropper PRIVATE
 )
 
 target_link_libraries(dropper PRIVATE
-	common
+	common archive_static
 )
 
 target_compile_definitions(dropper PRIVATE

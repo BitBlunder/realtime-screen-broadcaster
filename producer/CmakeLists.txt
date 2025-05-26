@@ -1,6 +1,8 @@
 cmake_minimum_required (VERSION 3.30)
 project (screen-broadcaster VERSION 0.1.0 LANGUAGES CXX)
 
+set (BUILD_SHARED_LIBS OFF)
+
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -12,8 +14,25 @@ set (SB_VERSION_MAJOR ${PROJECT_VERSION_MAJOR} CACHE INTERNAL "")
 set (SB_VERSION_MINOR ${PROJECT_VERSION_MINOR} CACHE INTERNAL "")
 set (SB_VERSION_PATCH ${PROJECT_VERSION_PATCH} CACHE INTERNAL "")
 
+set (ENABLE_ACL   OFF CACHE BOOL "" FORCE)
+set (ENABLE_XATTR OFF CACHE BOOL "" FORCE)
+set (ENABLE_ICONV OFF CACHE BOOL "" FORCE)
+
+set (ENABLE_TAR  OFF CACHE BOOL "" FORCE)
+set (ENABLE_CAT  OFF CACHE BOOL "" FORCE)
+set (ENABLE_LZMA ON  CACHE BOOL "" FORCE)
+set (ENABLE_CPIO OFF CACHE BOOL "" FORCE)
+
+set (ENABLE_TEST        OFF CACHE BOOL "" FORCE)
+set (LIBARCHIVE_INSTALL OFF CACHE BOOL "" FORCE)
+
+set(LIBLZMA_INCLUDE_DIR   "C:/My Programs/Development/MinGW/opt/include")
+set(LIBLZMA_LIBRARY       "C:/My Programs/Development/MinGW/opt/lib/liblzma.a")
+
 option (LOG_ENABLED "Enables logging." ON)
 option (LOG_ATTACH_CONSOLE "Enables console logging." ON)
+
+add_subdirectory(external/libarchive)
 
 add_subdirectory(common)
 add_subdirectory(dropper)
