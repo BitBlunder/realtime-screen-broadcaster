@@ -12,14 +12,18 @@
 #define ASIO_STANDALONE
 #define ASIO_HEADER_ONLY
 #include <asio.hpp>
+#include <asio/ssl.hpp> // Added for SSL support
 
 #include <websocketpp/client.hpp>
-#include <websocketpp/config/asio_no_tls_client.hpp>
+// #include <websocketpp/config/asio_no_tls_client.hpp> // Replaced with asio_client for TLS
+#include <websocketpp/config/asio_client.hpp> 
 #include <websocketpp/extensions/permessage_deflate/enabled.hpp>
 
 #include <utils/log.hpp>
 
-using asio_config = websocketpp::config::asio_client;
+// using asio_config = websocketpp::config::asio_client; // Already using asio_client, but ensure it's the TLS-enabled one
+using client = websocketpp::client<websocketpp::config::asio_tls_client>; // Use asio_tls_client
+using context_ptr = websocketpp::lib::shared_ptr<asio::ssl::context>;
 
 struct WsClientContext
 {
@@ -28,7 +32,7 @@ struct WsClientContext
 	std::atomic_bool atm_stop;
 
 	websocketpp::connection_hdl h_conn;
-	websocketpp::client<asio_config> client;
+	client ws_client; // Changed to the TLS client type
 
 	std::thread io_thread;
 	asio::io_context io_context;
@@ -40,6 +44,30 @@ struct WsClientContext
 	WsClientContext()
 		: atm_open(false), atm_stop(false), io_timer(asio::steady_timer(io_context)) {}
 };
+
+static context_ptr on_tls_init(websocketpp::connection_hdl hdl) {
+    // Create a new SSL context
+    context_ptr ctx = websocketpp::lib::make_shared<asio::ssl::context>(asio::ssl::context::sslv23);
+
+    try {
+        // Configure the context for client-side TLS
+        ctx->set_options(asio::ssl::context::default_workarounds |
+                         asio::ssl::context::no_sslv2 |
+                         asio::ssl::context::no_sslv3 |
+                         asio::ssl::context::single_dh_use);
+
+        // Set verification mode to verify the server's certificate
+        ctx->set_verify_mode(asio::ssl::verify_peer); // Restore peer verification
+        // TODO: Replace with actual path to CA bundle or server certificate
+        // For testing, you might use a self-signed certificate and load it directly
+        // For production, use a CA bundle
+        ctx->load_verify_file("ca.pem"); // Restore loading ca.pem
+    } catch (std::exception& e) {
+        LOG_ERROR("TLS initialization failed: %s", e.what());
+    }
+    return ctx;
+}
+
 
 static void
 _flush_queue(WsClientContext* self)
@@ -58,7 +86,7 @@ _flush_queue(WsClientContext* self)
 		LOG_DEBUG("Frame %llu: queue=%llu size=%.2f kB - attempting send...", this_id, depth, size_kb);
 
 		websocketpp::lib::error_code ec;
-		self->client.send(
+		self->ws_client.send( // Changed to ws_client
 			self->h_conn,
 			pkt.data(),
 			bytes,
@@ -102,34 +130,35 @@ ws_init(const WsClientConfig& ws_config)
 	if (!self)
 		return nullptr;
 
-	self->client.init_asio(&self->io_context);
-	self->client.clear_access_channels(websocketpp::log::alevel::all);
-	self->client.set_access_channels(websocketpp::log::alevel::connect | websocketpp::log::alevel::disconnect);
+	self->ws_client.init_asio(&self->io_context); // Changed to ws_client
+    self->ws_client.set_tls_init_handler(bind(&on_tls_init, websocketpp::lib::placeholders::_1)); // Added TLS init handler
+	self->ws_client.clear_access_channels(websocketpp::log::alevel::all); // Changed to ws_client
+	self->ws_client.set_access_channels(websocketpp::log::alevel::connect | websocketpp::log::alevel::disconnect); // Changed to ws_client
 
 	self->io_timer = asio::steady_timer(self->io_context);
 
 	auto start_connect = [self, ws_config] -> int {
 		websocketpp::lib::error_code ec;
 
-		auto con = self->client.get_connection(ws_config.url, ec);
+		auto con = self->ws_client.get_connection(ws_config.url, ec); // Changed to ws_client
 		if (ec)
 			return -1;
 
-		self->client.connect(con);
+		self->ws_client.connect(con); // Changed to ws_client
 
 		return 0;
 	};
 
-	self->client.set_open_handler([self](websocketpp::connection_hdl h) {
+	self->ws_client.set_open_handler([self](websocketpp::connection_hdl h) { // Changed to ws_client
 		self->h_conn = h;
 		self->atm_open = true;
 
-		self->client.send(h, "register_producer", websocketpp::frame::opcode::text);
+		self->ws_client.send(h, "register_producer", websocketpp::frame::opcode::text); // Changed to ws_client
 
 		_flush_schedule(self);
 	});
 
-	self->client.set_close_handler([self, start_connect](websocketpp::connection_hdl) {
+	self->ws_client.set_close_handler([self, start_connect](websocketpp::connection_hdl) { // Changed to ws_client
 		self->atm_open = false;
 
 		asio::steady_timer* t = new asio::steady_timer(self->io_context, std::chrono::seconds(1));
@@ -140,7 +169,7 @@ ws_init(const WsClientConfig& ws_config)
 		});
 	});
 
-	self->client.set_fail_handler([self, start_connect](websocketpp::connection_hdl) {
+	self->ws_client.set_fail_handler([self, start_connect](websocketpp::connection_hdl) { // Changed to ws_client
 		self->atm_open = false;
 
 		asio::steady_timer* t = new asio::steady_timer(self->io_context, std::chrono::seconds(1));
@@ -151,7 +180,7 @@ ws_init(const WsClientConfig& ws_config)
 		});
 	});
 
-	self->client.set_message_handler([self](websocketpp::connection_hdl, websocketpp::client<asio_config>::message_ptr msg) {
+	self->ws_client.set_message_handler([self](websocketpp::connection_hdl, client::message_ptr msg) { // Changed to ws_client and client::message_ptr
 		if (msg->get_opcode() == websocketpp::frame::opcode::text && msg->get_payload() == "stop")
 			self->atm_stop = true;
 	});
@@ -200,7 +229,7 @@ ws_free(WsClientContext* self)
 	if (self->atm_open)
 	{
 		websocketpp::lib::error_code ec;
-		self->client.close(self->h_conn, websocketpp::close::status::normal, "", ec);
+		self->ws_client.close(self->h_conn, websocketpp::close::status::normal, "", ec); // Changed to ws_client
 	}
 
 	self->io_context.stop();
