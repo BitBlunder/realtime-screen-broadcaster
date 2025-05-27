@@ -164,13 +164,28 @@ class StreamingApp:
 
 				try:
 					while True:
-						data = ws.receive()
-						if data is None:
+						try:
+							data = ws.receive()
+						except Exception as exc:
+							# Some network/protocol error occurred
+							print(f"[Producer {id}] connection error: {exc}")
 							break
 
+						if data is None:
+							# Clean close by the producer
+							print(f"[Producer {id}] disconnected cleanly.")
+							break
+
+						# A valid frame arrived → enqueue for all viewers
 						self.manager.add_frame(data)
+
 				finally:
+					# Always unregister, no matter how the loop exited
+					print(f"[Producer {id}] unregistering.")
 					self.manager.unregister_producer()
+
+				# After unregistering, we’re done with this socket
+				return
 
 			# Viewer flow
 			elif isinstance(first, str) and first == 'register_viewer':
