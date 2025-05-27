@@ -5,12 +5,16 @@ import ssl
 import gevent, flask, flask_sock
 
 from typing import Optional, Dict
+
 import gevent.monkey
 from gevent.queue import Queue
 from simple_websocket import Server
 
 # --- Apply gevent monkey-patching for cooperative I/O ---
 gevent.monkey.patch_all()
+
+SECRET_PHRASE = 'examproject123'
+FLASK_SECRET_KEY = 'a-very-long-random-string-here'
 
 class StreamManager:
 	"""
@@ -109,13 +113,35 @@ class StreamingApp:
 		self.sock = flask_sock.Sock(self.app)
 		self.manager = StreamManager(queue_size=4)
 
+		self.app.secret_key = FLASK_SECRET_KEY
+		self.app.config['SECRET_PHRASE'] = SECRET_PHRASE
+
 		gevent.spawn(self.manager.sender_loop)
 
 		self._register_routes()
 
 	def _register_routes(self) -> None:
-		@self.app.get('/')
+		@self.app.route('/', methods=['GET', 'POST'])
+		def login():
+			if flask.session.get('authorized'):
+				return flask.redirect(flask.url_for('index'))
+
+			error = None
+			if flask.request.method == 'POST':
+				entered = flask.request.form.get('phrase', '')
+				if entered == self.app.config['SECRET_PHRASE']:
+					flask.session['authorized'] = True
+					return flask.redirect(flask.url_for('index'))
+				else:
+					error = 'Incorrect secret phrase.'
+
+			return flask.render_template('login.html', error=error)
+
+		@self.app.get('/viewer')
 		def index():
+			# Protect the viewer page:
+			if not flask.session.get('authorized'):
+				return flask.redirect(flask.url_for('login'))
 			return flask.render_template('index.html')
 
 		@self.sock.route('/ws')

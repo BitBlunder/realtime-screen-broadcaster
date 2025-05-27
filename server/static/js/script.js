@@ -2,7 +2,6 @@
 const canvas       = document.getElementById('video-canvas');
 const debug_frame_element          = document.getElementById('debug-frame');
 const placeholder  = document.getElementById('placeholder');
-const stopBtn      = document.getElementById('stop-button');
 const statusEl     = document.getElementById('status');
 const resEl        = document.getElementById('resolution');
 const fpsEl        = document.getElementById('framerate');
@@ -97,11 +96,6 @@ function openWS() {
 	clearInterval(fpsTimer);
   };
 }
-
-// UI bindings
-stopBtn.onclick = () => {
-  if (ws && ws.readyState === WebSocket.OPEN) ws.send('stop');
-};
 
 fullscreenBtn.onclick = () => {
   if (!document.fullscreenElement) wrapper.requestFullscreen();
