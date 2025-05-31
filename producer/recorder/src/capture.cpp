@@ -251,7 +251,7 @@ capture_step(CaptureContext* capture_context, CaptureFrame* frame)
 	if (FAILED(hr)|| hr == DXGI_ERROR_WAIT_TIMEOUT)
 		return 1;
 
-	// cursor_update(capture_context->cursor, capture_context->duplication, &fi);
+	cursor_update(capture_context->cursor, capture_context->duplication, &fi);
 
 	ID3D11Texture2D* tex = NULL;
 	resource->QueryInterface(__uuidof(ID3D11Texture2D), (void**)&tex);
