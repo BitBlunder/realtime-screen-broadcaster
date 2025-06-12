@@ -19,35 +19,19 @@ target_include_directories(recorder PRIVATE
 	${INC_DIRECTORIES}
 )
 
-# Link libraries based on platform and configuration
-if(WIN32 AND NOT MSYS)
-	# Traditional Windows build with vcpkg
-	target_link_libraries(recorder PRIVATE
-		d3d11 dxgi dxguid common
-		ZLIB::ZLIB ws2_32
-	)
-	
-	if(ENABLE_OPENSSL)
-		target_link_libraries(recorder PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-		target_link_libraries(recorder PRIVATE crypt32)  # Required for Windows certificate store
-	endif()
-else()
-	# MSYS2/MinGW or Linux build with pkg-config
-	target_link_libraries(recorder PRIVATE
-		d3d11 dxgi dxguid common
-		${ZLIB_LIBRARIES} ws2_32
-	)
-	
-	if(ENABLE_OPENSSL)
-		target_link_libraries(recorder PRIVATE ${OPENSSL_LIBRARIES})
-		target_link_libraries(recorder PRIVATE crypt32)  # Required for Windows certificate store
-	endif()
-	
-	# Add include directories from pkg-config
-	target_include_directories(recorder PRIVATE ${ZLIB_INCLUDE_DIRS})
-	if(ENABLE_OPENSSL)
-		target_include_directories(recorder PRIVATE ${OPENSSL_INCLUDE_DIRS})
-	endif()
+target_link_libraries(recorder PRIVATE
+	d3d11 dxgi dxguid common
+	${ZLIB_LIBRARIES} ws2_32
+)
+
+if(ENABLE_OPENSSL)
+	target_link_libraries(recorder PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+	target_link_libraries(recorder PRIVATE crypt32)  # Required for Windows certificate store
+endif()
+
+target_include_directories(recorder PRIVATE ${ZLIB_INCLUDE_DIRS})
+if(ENABLE_OPENSSL)
+	target_include_directories(recorder PRIVATE ${OPENSSL_INCLUDE_DIRS})
 endif()
 
 target_compile_definitions(recorder PRIVATE

@@ -1,7 +1,7 @@
 cmake_minimum_required (VERSION 3.30)
 project (screen-broadcaster VERSION 0.1.0 LANGUAGES CXX)
 
-set (BUILD_SHARED_LIBS OFF)
+set (BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 set (CMAKE_CXX_STANDARD 17)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +26,16 @@ set (ENABLE_OPENSSL ON  CACHE BOOL "" FORCE)
 
 set (LIBARCHIVE_INSTALL OFF CACHE BOOL "" FORCE)
 
+set (ZSTD_USE_STATIC_LIBS    ON)
+set (ZLIB_USE_STATIC_LIBS    ON)
+set (EXPAT_USE_STATIC_LIBS   ON)
+set (BZip2_USE_STATIC_LIBS   ON)
+set (LibLZMA_USE_STATIC_LIBS ON)
+set (OPENSSL_USE_STATIC_LIBS ON)
+
+set(_old_suffixes "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.lib")
+
 find_package(ZLIB REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(LibLZMA REQUIRED)
@@ -34,6 +44,9 @@ option (LOG_ENABLED "Enables logging." ON)
 option (LOG_ATTACH_CONSOLE "Enables console logging." ON)
 
 add_subdirectory(external/libarchive)
+
+set(CMAKE_FIND_LIBRARY_SUFFIXES "${_old_suffixes}")
+unset(_old_suffixes)
 
 add_subdirectory(common)
 add_subdirectory(dropper)
