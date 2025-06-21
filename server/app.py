@@ -20,7 +20,9 @@ class StreamManager:
 	"""
 	Encapsulates producer, viewers, and frame queue state.
 	"""
-	def __init__(self, queue_size: int = 4):
+	def __init__(self, queue_size: int = 10):
+		self._lock = gevent.lock.Semaphore()
+
 		self.viewers: Dict[str, Server] = {}
 
 		self.producer_id: Optional[str] = None
@@ -34,12 +36,10 @@ class StreamManager:
 		return secrets.token_hex(8)
 
 
-	def register_viewer(self, id: str, ws: Server) -> None:
-		"""Add a viewer to the broadcast list."""
-
-		self.viewers[id] = ws
-
-		print(f"Viewer connected: SID={id} (total={len(self.viewers)})")
+	def register_viewer(self, sid: str, ws: Server):
+		with self._lock:
+			self.viewers[sid] = ws
+		print(f"Viewer connected: SID={sid} (total={len(self.viewers)})")
 
 	def register_producer(self, id: str, ws: Server) -> bool:
 		"""Attempt to register a new producer; return True if successful."""
@@ -54,12 +54,10 @@ class StreamManager:
 
 		return True
 
-	def unregister_viewer(self, id: str) -> None:
-		"""Remove a viewer from the broadcast list."""
-
-		self.viewers.pop(id, None)
-
-		print(f"Viewer disconnected: SID={id} (total={len(self.viewers)})")
+	def unregister_viewer(self, sid: str):
+		with self._lock:
+			self.viewers.pop(sid, None)
+		print(f"Viewer disconnected: SID={sid} (total={len(self.viewers)})")
 
 	def unregister_producer(self) -> None:
 		"""Clean up producer state and notify viewers of stream end."""
@@ -99,7 +97,10 @@ class StreamManager:
 			stale = []
 			frame = self.frame_queue.get()
 
-			for id, ws in self.viewers.items():
+			with self._lock:
+				targets = list(self.viewers.items())
+
+			for id, ws in targets:
 				try:
 					ws.send(frame)
 				except Exception:
